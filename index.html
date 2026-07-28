@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>SI PINJOL (DIGITALISASI PINJAM TEMPAT OLAHRAGA)</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        .container { max-width: 1100px; margin: auto; }
+        .box { border: 1px solid #ccc; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        input, select { width: 100%; padding: 8px; margin: 5px 0 15px 0; box-sizing: border-box; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 13px; }
+        th { background-color: #f4f4f4; }
+        button { cursor: pointer; padding: 8px 15px; border-radius: 4px; border: none; }
+        button[type="submit"] { background-color: #007bff; color: white; width: 100%; }
+        .btn-download { background-color: #28a745; color: white; margin-top: 10px; width: 100%; }
+        .btn-cancel { background-color: #dc3545; color: white; padding: 5px 10px; }
+        .btn-confirm { background-color: #28a745; color: white; padding: 5px 10px; }
+        .btn-lihat { background-color: #6c757d; color: white; padding: 5px 10px; }
+        .btn-forward { background-color: #17a2b8; color: white; padding: 5px 10px; }
+        .btn-balasan { background-color: #6f42c1; color: white; padding: 5px 10px; }
+        .btn-kirim-wa { background-color: #25D366; color: white; padding: 5px 10px; }
+        .btn-unduh { background-color: #6c757d; color: white; padding: 5px 10px; }
+        .btn-back { background-color: #6c757d; color: white; width: 100%; margin-top: 10px; }
+        .aksi-cell { display: flex; gap: 5px; flex-wrap: wrap; }
+        .rekening-box { background: #f4f4f4; padding: 12px; border-radius: 6px; margin-bottom: 15px; }
+        .rekening-box p { margin: 2px 0; }
+        .ringkasan p { margin: 4px 0; }
+        .status-menunggu { color: #b8860b; font-weight: bold; }
+        .status-lunas { color: #28a745; font-weight: bold; }
+        .harga-info { font-size: 13px; color: #555; margin-top: -10px; margin-bottom: 15px; white-space: pre-line; }
+        .logo-header { text-align: center; margin-bottom: 10px; }
+        .logo-header img { height: 90px; width: auto; }
+        h2 { text-align: center; }
+
+        /* --- Landing / dashboard awal --- */
+        .landing-wrap { text-align: center; padding: 40px 0; }
+        .landing-wrap p.subjudul { color: #666; margin-bottom: 30px; }
+        .landing-pilihan { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; }
+        .kartu-peran {
+            width: 220px; padding: 30px 20px; border: 1px solid #ddd; border-radius: 10px;
+            cursor: pointer; background: #fff; transition: box-shadow .15s, transform .15s;
+        }
+        .kartu-peran:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.12); transform: translateY(-2px); }
+        .kartu-peran .ikon { font-size: 40px; margin-bottom: 10px; }
+        .kartu-peran h4 { margin: 5px 0; }
+        .kartu-peran p { font-size: 12px; color: #777; margin: 0; }
+        .kartu-penyewa { border-top: 4px solid #007bff; }
+        .kartu-admin { border-top: 4px solid #17a2b8; }
+        .btn-menu { background-color: #6c757d; color: white; padding: 6px 14px; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="logo-header"><img src="logo.png" alt="Logo Kabupaten Tuban"></div>
+    <h2>SI PINJOL (DIGITALISASI PINJAM TEMPAT OLAHRAGA)</h2>
+
+    <!-- LANDING / DASHBOARD AWAL -->
+    <div id="landingBox" class="landing-wrap">
+        <p class="subjudul">Silakan pilih masuk sebagai:</p>
+        <div class="landing-pilihan">
+            <div class="kartu-peran kartu-penyewa" onclick="masukSebagaiPenyewa()">
+                <div class="ikon">&#128100;</div>
+                <h4>Penyewa</h4>
+                <p>Ajukan booking lapangan / tempat olahraga</p>
+            </div>
+            <div class="kartu-peran kartu-admin" onclick="masukSebagaiAdmin()">
+                <div class="ikon">&#128274;</div>
+                <h4>Admin</h4>
+                <p>Login dengan password untuk kelola booking</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- STEP 1: FORM BOOKING (khusus penyewa) -->
+    <div class="box" id="formBox" style="display:none;">
+        <h3>Langkah 1: Data Booking &amp; Surat Permohonan</h3>
+        <form id="bookingForm">
+            <label>Nama:</label> <input type="text" id="nama" required>
+            <label>Alamat:</label> <input type="text" id="alamat" required>
+            <label>Nomor WhatsApp:</label> <input type="tel" id="wa" required>
+
+            <label>Pilih Lokasi:</label>
+            <select id="lokasi" required onchange="saatLokasiBerubah()">
+                <option value="" disabled selected>-- Pilih Lokasi Olahraga --</option>
+                <option>Stadion Tuban Sport Center</option>
+                <option>Stadion Loka Jaya</option>
+                <option>Lapangan Tennis Pemkab</option>
+                <option>Lapangan Tennis Indoor</option>
+                <option>GOR Rangga Jaya Anoraga</option>
+            </select>
+
+            <div id="jenisLapanganWrapper" style="display:none;">
+                <label>Jenis Lapangan (GOR Rangga Jaya Anoraga):</label>
+                <select id="jenisLapangan" onchange="tampilkanInfoHarga()">
+                    <option value="" disabled selected>-- Pilih Jenis Lapangan --</option>
+                    <option>Lapangan Badminton</option>
+                    <option>Lapangan Basket</option>
+                    <option>Lapangan Multifungsi</option>
+                </select>
+            </div>
+
+            <div id="jenisPenggunaanWrapper" style="display:none;">
+                <label>Jenis Penggunaan:</label>
+                <select id="jenisPenggunaan" onchange="tampilkanInfoHarga()">
+                    <option value="" disabled selected>-- Pilih Jenis Penggunaan --</option>
+                </select>
+            </div>
+
+            <div class="harga-info" id="infoHarga"></div>
+
+            <label>Tanggal:</label> <input type="date" id="tanggal" required onchange="tampilkanInfoHarga()">
+            <div style="display: flex; gap: 10px;">
+                <div style="flex: 1;"><label>Mulai Jam:</label><input type="time" id="jamMulai" required onchange="tampilkanInfoHarga()"></div>
+                <div style="flex: 1;"><label>Selesai Jam:</label><input type="time" id="jamSelesai" required onchange="tampilkanInfoHarga()"></div>
+            </div>
+
+            <label>Upload Surat Permohonan Penyewaan (dari pemohon, untuk diajukan disposisi ke Kepala Dinas):</label>
+            <input type="file" id="suratPenyewa" accept="application/pdf,image/*" required>
+            <p style="font-size:12px;color:#777;margin-top:-12px;">Format PDF atau foto/scan surat, maksimal 3MB. Karena ini menyangkut sewa lahan/fasilitas milik pemerintah, surat ini perlu menunggu disposisi dari Kepala Dinas. Admin akan menghubungi Anda via WhatsApp untuk proses selanjutnya (termasuk arahan pembayaran).</p>
+
+            <button type="submit">Kirim Surat Permohonan</button>
+        </form>
+    </div>
+
+    <!-- DAFTAR BOOKING: tampil untuk Penyewa maupun Admin. Kolom Aksi hanya aktif
+         (berisi tombol yang bisa mengubah data) kalau sedang login sebagai Admin;
+         kalau tidak, kolom itu hanya menampilkan tombol terkunci. -->
+    <div id="daftarBookingBox" style="display:none;">
+        <button type="button" class="btn-menu" onclick="tampilkanLanding()">&larr; Kembali ke Menu</button>
+        <h3>Daftar Booking</h3>
+        <button type="button" class="btn-download" id="btnDownload" style="display:none;" onclick="exportKeExcel()">Download Data (XLS/CSV)</button>
+        <button type="button" class="btn-cancel" id="btnBersihkan" style="display:none;" onclick="bersihkanRiwayat()">&#129529; Bersihkan Riwayat (Tanggal Lewat)</button>
+        <table>
+            <thead>
+                <tr>
+                    <th>No</th><th>Nama</th><th>Alamat</th><th>WA</th><th>Lokasi</th><th>Jenis Lapangan / Penggunaan</th>
+                    <th>Tanggal</th><th>Jam</th><th>Durasi</th><th>Harga</th>
+                    <th>Status Disposisi</th><th>Status Balasan</th><th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody id="tabelBody"></tbody>
+        </table>
+    </div>
+
+    <input type="file" id="inputSuratBalasanGlobal" accept="application/pdf,image/*" style="display:none;">
+</div>
+
+<script>
+    const form = document.getElementById('bookingForm');
+    const tabelBody = document.getElementById('tabelBody');
+    let sesiAdminPassword = null; // password admin yg sudah tervalidasi di sesi saat ini (hilang kalau reload/kembali ke menu)
+    let modeAksiAdmin = false;    // true kalau sedang login sebagai Admin (menentukan kolom Aksi aktif/terkunci)
+
+    // >>> GANTI baris di bawah ini dengan URL Web App Apps Script Anda setelah proses deploy <<<
+    const API_URL = "https://script.google.com/macros/s/AKfycbwEpDILs5i52t_vR4lcYXOpxJMrBT5ajXkA70yqCryez1dv2eDM-N4E0Ms_RShbutCP4Q/exec";
+
+    // Jam mulainya "malam" (24 jam). Sebelum jam ini dianggap siang/pagi-sore.
+    const JAM_MALAM_MULAI = 18; // jam 18:00
+
+    // >>> GANTI info pembayaran di bawah ini dengan rekening/QRIS Anda sendiri <<<
+    // Ini HANYA teks yang disisipkan ke pesan WhatsApp ke penyewa setelah disposisi
+    // disetujui, supaya penyewa langsung tahu cara bayar (bukan menunggu chat susulan).
+    // Pembayaran tetap sepenuhnya di luar sistem ini (dicek manual oleh admin via
+    // WhatsApp), sesuai catatan di file Apps Script.
+    const INFO_PEMBAYARAN =
+        `Transfer Bank:\n` +
+        `Bank ................ (isi nama bank)\n` +
+        `No. Rekening ........ (isi nomor rekening)\n` +
+        `Atas Nama ........... (isi nama pemilik rekening)\n\n` +
+        `QRIS:\n` +
+        `(lampirkan/kirim gambar QRIS Anda pada chat WhatsApp ini setelah pesan terkirim)`;
+
+    let daftarBookingTerakhir = [];      // cache data terakhir dari server (dipakai utk cek bentrok & kirim WA)
+    let currentBookingIdBalasan = null;
+    let passwordBalasanSementara = null;
+
+    // Navigasi dashboard awal: landing -> pilih Penyewa atau Admin
+    function tampilkanLanding() {
+        document.getElementById('landingBox').style.display = 'block';
+        document.getElementById('formBox').style.display = 'none';
+        document.getElementById('daftarBookingBox').style.display = 'none';
+        sesiAdminPassword = null; // "logout" - password sesi dilupakan saat kembali ke menu
+        modeAksiAdmin = false;
+    }
+
+    function masukSebagaiPenyewa() {
+        document.getElementById('landingBox').style.display = 'none';
+        document.getElementById('formBox').style.display = 'block';
+        document.getElementById('daftarBookingBox').style.display = 'block';
+        document.getElementById('btnDownload').style.display = 'none';
+        document.getElementById('btnBersihkan').style.display = 'none';
+        modeAksiAdmin = false;
+        muatSemuaBooking();
+    }
+
+    async function masukSebagaiAdmin() {
+        const password = prompt('Masukkan Password Admin:');
+        if (password === null) return;
+        const hasil = await panggilAPI({ action: 'cekPassword', password });
+        if (!hasil.success) {
+            alert(hasil.message || 'Password salah.');
+            return;
+        }
+        sesiAdminPassword = password; // dipakai ulang otomatis utk aksi admin selama sesi ini
+        modeAksiAdmin = true;
+        document.getElementById('landingBox').style.display = 'none';
+        document.getElementById('formBox').style.display = 'none';
+        document.getElementById('daftarBookingBox').style.display = 'block';
+        document.getElementById('btnDownload').style.display = 'inline-block';
+        document.getElementById('btnBersihkan').style.display = 'inline-block';
+        muatSemuaBooking();
+    }
+
+    // Dipakai di semua aksi admin: pakai password sesi kalau sudah login,
+    // kalau tidak ada (jarang terjadi) baru tanya lagi lewat prompt.
+    function mintaPasswordAdmin(pesan) {
+        return sesiAdminPassword || prompt(pesan);
+    }
+
+    async function panggilAPI(payload) {
+        const res = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // hindari CORS preflight yg tidak didukung Apps Script
+            body: JSON.stringify(payload)
+        });
+        return res.json();
+    }
+
+    async function muatSemuaBooking() {
+        if (API_URL.includes('TEMPEL_URL_WEB_APP')) {
+            tabelBody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:#c0392b;">&#9888; API_URL belum diisi. Buka file ini dengan editor teks, cari baris "const API_URL", lalu ganti dengan URL Web App Apps Script Anda.</td></tr>';
+            return;
+        }
+        tabelBody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:#777;">Memuat data...</td></tr>';
+        try {
+            const res = await fetch(API_URL);
+            const data = await res.json();
+            daftarBookingTerakhir = data;
+            renderTabel(data);
+        } catch (err) {
+            tabelBody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:#c0392b;">Gagal memuat data. Cek koneksi internet, atau pastikan URL Web App masih aktif.</td></tr>';
+            console.error(err);
+        }
+    }
+
+    function formatRupiah(angka) {
+        return "Rp " + Number(angka).toLocaleString('id-ID');
+    }
+
+    function waktuKeMenit(waktuStr) {
+        const [jam, menit] = waktuStr.split(':').map(Number);
+        return jam * 60 + menit;
+    }
+
+    function getHariInfo(tanggalStr) {
+        const d = new Date(tanggalStr + 'T00:00:00');
+        const hari = d.getDay(); // 0 = Minggu, 6 = Sabtu
+        return {
+            hari,
+            isMinggu: hari === 0,
+            isWeekend: hari === 0 || hari === 6
+        };
+    }
+
+    function isMalamHari(jamMulaiStr) {
+        if (!jamMulaiStr) return false;
+        return waktuKeMenit(jamMulaiStr) >= JAM_MALAM_MULAI * 60;
+    }
+
+    // Opsi jenis penggunaan yang tersedia per lokasi (sesuai dokumen tarif resmi)
+    const OPSI_JENIS_PENGGUNAAN = {
+        "Stadion Loka Jaya": ["Latihan", "Pertandingan (Tanpa Bayaran)", "Pertandingan (Memungut Bayaran)", "Pertunjukan/Keramaian (Tanpa Bayaran)", "Pertandingan/Keramaian (Memungut Bayaran)", "Pertandingan Sepak Bola Tingkat Lokal"],
+        "Lapangan Tennis Pemkab": ["Latihan", "Pertandingan"],
+        "Lapangan Tennis Indoor": ["Latihan", "Pertandingan", "Pertandingan (Memungut Bayaran)"],
+        "GOR Rangga Jaya Anoraga": ["Latihan", "Pertandingan"]
+    };
+
+    function saatLokasiBerubah() {
+        const lokasi = document.getElementById('lokasi').value;
+        const wrapper = document.getElementById('jenisLapanganWrapper');
+        const jenisSelect = document.getElementById('jenisLapangan');
+        if (lokasi === "GOR Rangga Jaya Anoraga") {
+            wrapper.style.display = 'block';
+            jenisSelect.required = true;
+        } else {
+            wrapper.style.display = 'none';
+            jenisSelect.required = false;
+            jenisSelect.value = '';
+        }
+
+        const wrapperPenggunaan = document.getElementById('jenisPenggunaanWrapper');
+        const penggunaanSelect = document.getElementById('jenisPenggunaan');
+        const opsi = OPSI_JENIS_PENGGUNAAN[lokasi];
+        if (opsi) {
+            wrapperPenggunaan.style.display = 'block';
+            penggunaanSelect.required = true;
+            penggunaanSelect.innerHTML = '<option value="" disabled selected>-- Pilih Jenis Penggunaan --</option>' +
+                opsi.map(o => `<option>${o}</option>`).join('');
+        } else {
+            wrapperPenggunaan.style.display = 'none';
+            penggunaanSelect.required = false;
+            penggunaanSelect.innerHTML = '<option value="" disabled selected>-- Pilih Jenis Penggunaan --</option>';
+        }
+
+        tampilkanInfoHarga();
+    }
+
+    // Menampilkan info harga & jam operasional sesuai pilihan (tidak menghitung total akhir)
+    function tampilkanInfoHarga() {
+        const lokasi = document.getElementById('lokasi').value;
+        const jenisPenggunaan = document.getElementById('jenisPenggunaan').value;
+        const info = document.getElementById('infoHarga');
+        if (!lokasi) { info.innerText = ''; return; }
+
+        let teks = '';
+        switch (lokasi) {
+            case "Stadion Tuban Sport Center":
+                teks = "Harga per pertandingan:\n- Hari biasa (senin-jumat): Siang Rp1.000.000 | Malam Rp3.000.000\n- Weekend (Sabtu-Minggu): Siang Rp2.000.000 | Malam Rp6.000.000";
+                break;
+
+            case "Stadion Loka Jaya":
+                switch (jenisPenggunaan) {
+                    case "Latihan":
+                        teks = "Harga Latihan per jam:\n- Senin-Jumat: Siang Rp50.000 | Malam Rp150.000\n- Sabtu-Minggu: Siang Rp75.000 | Malam Rp200.000";
+                        break;
+                    case "Pertandingan (Tanpa Bayaran)":
+                        teks = "Harga Pertandingan (tanpa bayaran) per jam:\n- Senin-Jumat: Siang Rp100.000 | Malam Rp200.000\n- Sabtu-Minggu: Siang Rp150.000 | Malam Rp250.000";
+                        break;
+                    case "Pertandingan (Memungut Bayaran)":
+                        teks = "Harga Pertandingan (memungut bayaran): Rp300.000/jam, berlaku semua hari.";
+                        break;
+                    case "Pertunjukan/Keramaian (Tanpa Bayaran)":
+                        teks = "Harga Pertunjukan/Keramaian (tanpa bayaran): Rp1.000.000/hari (flat, tidak dikali jam).";
+                        break;
+                    case "Pertandingan/Keramaian (Memungut Bayaran)":
+                        teks = "Harga Pertandingan/Keramaian (memungut bayaran): Rp2.500.000/hari (flat, tidak dikali jam).";
+                        break;
+                    case "Pertandingan Sepak Bola Tingkat Lokal":
+                        teks = "Harga per pertandingan (persahabatan/uji coba/kompetisi internal):\n- Senin-Jumat: Siang Rp1.000.000 | Malam Rp3.000.000\n- Sabtu-Minggu: Siang Rp2.000.000 | Malam Rp6.000.000";
+                        break;
+                    default:
+                        teks = "Silakan pilih Jenis Penggunaan untuk melihat rincian harga.";
+                }
+                break;
+
+            case "Lapangan Tennis Pemkab":
+                teks = "Buka setiap hari. Harga per jam per klub/lapangan:\n- Latihan: Siang Rp10.000 | Malam Rp15.000\n- Pertandingan: Siang Rp15.000 | Malam Rp25.000";
+                break;
+
+            case "Lapangan Tennis Indoor":
+                teks = "Buka setiap hari. Harga per jam per klub/lapangan:\n- Latihan: Siang Rp25.000 | Malam Rp30.000\n- Pertandingan: Siang Rp50.000 | Malam Rp60.000\n- Pertandingan (memungut bayaran): Siang Rp100.000 | Malam Rp150.000";
+                break;
+
+            case "GOR Rangga Jaya Anoraga":
+                const jenis = document.getElementById('jenisLapangan').value;
+                teks = "Buka setiap hari.\n";
+                if (!jenis) {
+                    teks += "Silakan pilih Jenis Lapangan untuk melihat rincian harga.";
+                } else if (jenis === "Lapangan Multifungsi") {
+                    teks += "Latihan (per hari): Siang Rp50.000 | Malam Rp100.000\nPertandingan (per hari): Siang Rp75.000 | Malam Rp150.000";
+                } else if (jenis === "Lapangan Basket") {
+                    teks += "Latihan (per bulan/club, 2x seminggu, sesi 3 jam): Siang Rp200.000 | Malam Rp250.000\nPertandingan (per hari): Siang Rp250.000 | Malam Rp300.000";
+                } else if (jenis === "Lapangan Badminton") {
+                    teks += "Latihan (per bulan/club, 2x seminggu, sesi 3 jam): Siang Rp200.000 | Malam Rp250.000\nPertandingan (per hari): Siang Rp100.000 | Malam Rp150.000";
+                }
+                break;
+        }
+        info.innerText = teks;
+    }
+
+    // Validasi jam operasional khusus lokasi tertentu. Kembalikan pesan error, atau null jika valid.
+    function cekJamOperasional(lokasi, mulaiMenit, selesaiMenit) {
+        return null;
+    }
+
+    // Menghitung total harga berdasarkan aturan masing-masing lokasi (sesuai dokumen tarif resmi)
+    function hitungHarga(data) {
+        const { isWeekend } = getHariInfo(data.tanggal);
+        const malam = isMalamHari(data.mulai);
+        const diffMenit = waktuKeMenit(data.selesai) - waktuKeMenit(data.mulai);
+        const jamDibulatkan = Math.ceil(diffMenit / 60);
+
+        switch (data.lokasi) {
+            case "Stadion Tuban Sport Center":
+                if (isWeekend) return malam ? 6000000 : 2000000;
+                return malam ? 3000000 : 1000000;
+
+            case "Stadion Loka Jaya":
+                switch (data.jenisPenggunaan) {
+                    case "Latihan":
+                        if (isWeekend) return (malam ? 200000 : 75000) * jamDibulatkan;
+                        return (malam ? 150000 : 50000) * jamDibulatkan;
+                    case "Pertandingan (Tanpa Bayaran)":
+                        if (isWeekend) return (malam ? 250000 : 150000) * jamDibulatkan;
+                        return (malam ? 200000 : 100000) * jamDibulatkan;
+                    case "Pertandingan (Memungut Bayaran)":
+                        return 300000 * jamDibulatkan;
+                    case "Pertunjukan/Keramaian (Tanpa Bayaran)":
+                        return 1000000;
+                    case "Pertandingan/Keramaian (Memungut Bayaran)":
+                        return 2500000;
+                    case "Pertandingan Sepak Bola Tingkat Lokal":
+                        if (isWeekend) return malam ? 6000000 : 2000000;
+                        return malam ? 3000000 : 1000000;
+                    default:
+                        return 0;
+                }
+
+            case "Lapangan Tennis Pemkab":
+                if (data.jenisPenggunaan === "Pertandingan") return (malam ? 25000 : 15000) * jamDibulatkan;
+                return (malam ? 15000 : 10000) * jamDibulatkan; // Latihan
+
+            case "Lapangan Tennis Indoor":
+                if (data.jenisPenggunaan === "Pertandingan (Memungut Bayaran)") return (malam ? 150000 : 100000) * jamDibulatkan;
+                if (data.jenisPenggunaan === "Pertandingan") return (malam ? 60000 : 50000) * jamDibulatkan;
+                return (malam ? 30000 : 25000) * jamDibulatkan; // Latihan
+
+            case "GOR Rangga Jaya Anoraga":
+                if (data.jenisLapangan === "Lapangan Multifungsi") {
+                    if (data.jenisPenggunaan === "Pertandingan") return malam ? 150000 : 75000;
+                    return malam ? 100000 : 50000; // Latihan
+                }
+                if (data.jenisLapangan === "Lapangan Basket") {
+                    if (data.jenisPenggunaan === "Pertandingan") return malam ? 300000 : 250000;
+                    return malam ? 250000 : 200000; // Latihan (per bulan/club)
+                }
+                // Lapangan Badminton
+                if (data.jenisPenggunaan === "Pertandingan") return malam ? 150000 : 100000;
+                return malam ? 250000 : 200000; // Latihan (per bulan/club)
+
+            default:
+                return 0;
+        }
+    }
+
+    function jenisTampilDari(b) {
+        if (b.jenisLapangan) return b.jenisLapangan + (b.jenisPenggunaan ? ` (${b.jenisPenggunaan})` : '');
+        if (b.jenisPenggunaan) return b.jenisPenggunaan;
+        return '-';
+    }
+
+    function lokasiTampilDari(b) {
+        const jenis = jenisTampilDari(b);
+        return (jenis && jenis !== '-') ? `${b.lokasi} - ${jenis}` : b.lokasi;
+    }
+
+    function exportKeExcel() {
+        let csvContent = "\uFEFFNo,Nama,Alamat,Nomor WA,Lokasi,Jenis Lapangan / Penggunaan,Tanggal,Jam,Durasi,Harga,Status Disposisi,Status Balasan\n";
+        daftarBookingTerakhir.forEach((b, i) => {
+            const baris = [
+                i + 1, b.nama, b.alamat, b.wa, b.lokasi, jenisTampilDari(b), b.tanggal,
+                `${b.mulai} - ${b.selesai}`, b.durasiString, formatRupiah(b.totalHarga),
+                b.statusSurat, b.statusBalasan
+            ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(",");
+            csvContent += baris + "\n";
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = "Daftar_Booking_SI_PINJOL.csv";
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        if (API_URL.includes('TEMPEL_URL_WEB_APP')) {
+            alert('API_URL belum dikonfigurasi. Hubungi admin website ini.');
+            return;
+        }
+
+        const lokasi = document.getElementById('lokasi').value;
+        const jenisLapangan = document.getElementById('jenisLapangan').value; // kosong jika bukan GOR
+        const jenisPenggunaan = document.getElementById('jenisPenggunaan').value; // kosong jika lokasi tidak butuh
+
+        if (lokasi === "GOR Rangga Jaya Anoraga" && !jenisLapangan) {
+            alert("Silakan pilih jenis lapangan (Badminton / Basket / Multifungsi) untuk GOR Rangga Jaya Anoraga.");
+            return;
+        }
+
+        if (OPSI_JENIS_PENGGUNAAN[lokasi] && !jenisPenggunaan) {
+            alert("Silakan pilih Jenis Penggunaan (Latihan/Pertandingan/dll) terlebih dahulu.");
+            return;
+        }
+
+        const data = {
+            nama: document.getElementById('nama').value,
+            alamat: document.getElementById('alamat').value,
+            wa: document.getElementById('wa').value,
+            lokasi: lokasi,
+            jenisLapangan: jenisLapangan,
+            jenisPenggunaan: jenisPenggunaan,
+            tanggal: document.getElementById('tanggal').value,
+            mulai: document.getElementById('jamMulai').value,
+            selesai: document.getElementById('jamSelesai').value
+        };
+
+        // Kunci sumber daya fisik (lokasi + jenis lapangan) dipakai untuk cek bentrok jadwal.
+        // Jenis Penggunaan (Latihan/Pertandingan) TIDAK dipakai di sini karena lapangan yang sama
+        // tetap terpakai secara fisik apapun jenis penggunaannya.
+        data.resourceKey = data.lokasi + (data.jenisLapangan ? ' - ' + data.jenisLapangan : '');
+
+        const mulaiMenit = waktuKeMenit(data.mulai);
+        const selesaiMenit = waktuKeMenit(data.selesai);
+        const diffMenit = selesaiMenit - mulaiMenit;
+
+        if (diffMenit <= 0) {
+            alert("Jam selesai harus lebih besar dari jam mulai!");
+            return;
+        }
+
+        const errorJamOperasional = cekJamOperasional(data.lokasi, mulaiMenit, selesaiMenit);
+        if (errorJamOperasional) {
+            alert(errorJamOperasional);
+            return;
+        }
+
+        // Cek bentrok jadwal berdasarkan sumber daya fisik (lokasi + jenis lapangan untuk GOR),
+        // memakai data booking terakhir yang sudah dimuat dari server.
+        for (const b of daftarBookingTerakhir) {
+            if ((b.resourceKey || '') === data.resourceKey && b.tanggal === data.tanggal) {
+                const exMulaiMenit = waktuKeMenit(b.mulai);
+                const exSelesaiMenit = waktuKeMenit(b.selesai);
+                if (mulaiMenit < exSelesaiMenit && selesaiMenit > exMulaiMenit) {
+                    const namaSlot = data.jenisLapangan ? `${data.lokasi} (${data.jenisLapangan})` : data.lokasi;
+                    alert(`Maaf, "${namaSlot}" pada tanggal ${data.tanggal} sudah dibooking pada jam ${b.mulai} - ${b.selesai}! Silakan pilih waktu atau lokasi lain.`);
+                    return;
+                }
+            }
+        }
+
+        const suratFile = document.getElementById('suratPenyewa').files[0];
+        if (!suratFile) {
+            alert("Silakan upload surat permohonan penyewaan terlebih dahulu.");
+            return;
+        }
+        if (suratFile.size > 3 * 1024 * 1024) {
+            alert("Ukuran surat terlalu besar. Maksimal 3MB.");
+            return;
+        }
+
+        const jam = Math.floor(diffMenit / 60);
+        const menit = diffMenit % 60;
+        data.durasiString = jam > 0 ? (menit > 0 ? `${jam} Jam ${menit} Menit` : `${jam} Jam`) : `${menit} Menit`;
+        data.totalHarga = hitungHarga(data);
+
+        const readerSurat = new FileReader();
+        readerSurat.onload = async function(e) {
+            data.suratBase64 = e.target.result;
+
+            const tombolSubmit = form.querySelector('button[type="submit"]');
+            tombolSubmit.disabled = true;
+            tombolSubmit.innerText = 'Mengirim...';
+
+            const hasil = await panggilAPI(Object.assign({ action: 'tambahBooking' }, data));
+
+            tombolSubmit.disabled = false;
+            tombolSubmit.innerText = 'Kirim Surat Permohonan';
+
+            if (hasil.success) {
+                form.reset();
+                document.getElementById('jenisLapanganWrapper').style.display = 'none';
+                document.getElementById('jenisPenggunaanWrapper').style.display = 'none';
+                document.getElementById('infoHarga').innerText = '';
+                alert("Surat permohonan berhasil dikirim. Admin akan menghubungi Anda via WhatsApp untuk proses selanjutnya (menunggu disposisi Kepala Dinas, lalu arahan pembayaran).");
+                muatSemuaBooking();
+            } else {
+                alert(hasil.message || 'Gagal mengirim data, silakan coba lagi.');
+            }
+        };
+        readerSurat.readAsDataURL(suratFile);
+    });
+
+    function lihatDokumen(url) {
+        if (!url) { alert('Dokumen tidak ditemukan.'); return; }
+        window.open(url, '_blank');
+    }
+
+    // Format nomor WA ke format internasional (62...) supaya link wa.me valid
+    function formatNomorWA(wa) {
+        let nomor = String(wa).replace(/[^0-9]/g, '');
+        if (nomor.startsWith('0')) nomor = '62' + nomor.slice(1);
+        else if (!nomor.startsWith('62')) nomor = '62' + nomor;
+        return nomor;
+    }
+
+    function bukaWA(nomorWaMentah, pesan) {
+        const nomor = formatNomorWA(nomorWaMentah);
+        window.open(`https://wa.me/${nomor}?text=${encodeURIComponent(pesan)}`, '_blank');
+    }
+
+    // Tombol opsional (tanpa password, tidak mengubah status) untuk mengingatkan penyewa
+    // bahwa berkasnya sedang menunggu disposisi Kepala Dinas.
+    function kirimWAMenungguDisposisi(id) {
+        const b = daftarBookingTerakhir.find(x => x.id === id);
+        if (!b) return;
+        const pesan = `Yth. ${b.nama},\n\nTerima kasih telah mengajukan permohonan booking ${lokasiTampilDari(b)} pada ${b.tanggal} jam ${b.mulai} - ${b.selesai}.\n\nPermohonan Anda sedang kami proses dan menunggu disposisi dari Kepala Dinas. Kami akan menghubungi Anda kembali segera setelah disposisi diterima.\n\nTerima kasih.\n- Admin SI PINJOL`;
+        bukaWA(b.wa, pesan);
+    }
+
+    // Aksi utama: menandai bahwa Kepala Dinas sudah memberi disposisi/persetujuan,
+    // lalu mengirim WA ke penyewa berisi info bahwa mereka boleh lanjut membayar via chat WA ini.
+    async function validasiKepalaDinas(id) {
+        const password = mintaPasswordAdmin("Masukkan Password Admin untuk menandai disposisi Kepala Dinas sudah diteruskan/disetujui:");
+        if (password === null) return;
+
+        // Buka tab kosong SEKARANG JUGA (masih dalam konteks klik user), sebelum ada
+        // proses async apa pun. Kalau window.open dipanggil setelah await (mis. setelah
+        // panggilAPI selesai), browser (Chrome/Safari dll) akan menganggap itu bukan lagi
+        // hasil klik langsung dan diam-diam MEMBLOKIR pop-up-nya — itu sebabnya chat WA
+        // pembayaran kadang tidak muncul. Dengan membuka tab kosong dulu lalu mengarahkan
+        // (redirect) tab tsb belakangan, pop-up-nya tidak diblokir.
+        const waWindow = window.open('', '_blank');
+
+        const hasil = await panggilAPI({ action: 'validasiKepalaDinas', id, password });
+        if (hasil.success) {
+            await muatSemuaBooking();
+            const b = daftarBookingTerakhir.find(x => x.id === id);
+            if (b) {
+                const pesan = `Yth. ${b.nama},\n\nDisposisi Kepala Dinas untuk permohonan booking Anda di ${lokasiTampilDari(b)} pada ${b.tanggal} jam ${b.mulai} - ${b.selesai} sudah *disetujui/diteruskan*.\n\nTotal biaya: ${formatRupiah(b.totalHarga)}\n\nMohon segera lakukan pembayaran melalui salah satu cara berikut:\n\n${INFO_PEMBAYARAN}\n\nSetelah pembayaran kami terima dan verifikasi, surat balasan resmi (sudah ditandatangani Kepala Dinas) akan langsung kami kirimkan melalui chat WhatsApp ini. Mohon kirimkan bukti transfer/pembayaran ke chat ini setelah membayar.\n\nTerima kasih.\n- Admin SI PINJOL`;
+                const nomor = formatNomorWA(b.wa);
+                const linkWA = `https://wa.me/${nomor}?text=${encodeURIComponent(pesan)}`;
+                if (waWindow) {
+                    waWindow.location.href = linkWA;
+                } else {
+                    // Fallback kalau tab kosong tadi tetap gagal dibuka (mis. pop-up
+                    // sudah diblokir dari awal oleh pengaturan browser).
+                    bukaWA(b.wa, pesan);
+                }
+            } else if (waWindow) {
+                waWindow.close();
+            }
+        } else {
+            if (waWindow) waWindow.close();
+            alert(hasil.message || 'Gagal memvalidasi.');
+        }
+    }
+
+    // Diklik admin kapan saja setelah disposisi diteruskan (biasanya setelah pembayaran
+    // dikonfirmasi manual via WA, di luar sistem ini) untuk mengunggah surat balasan resmi.
+    function uploadSuratBalasan(id) {
+        const password = mintaPasswordAdmin('Masukkan Password Admin untuk mengunggah surat balasan akhir (sudah di-TTE Kepala Dinas):');
+        if (password === null) return;
+        currentBookingIdBalasan = id;
+        passwordBalasanSementara = password;
+        const inputGlobal = document.getElementById('inputSuratBalasanGlobal');
+        inputGlobal.value = '';
+        inputGlobal.click();
+    }
+
+    document.getElementById('inputSuratBalasanGlobal').addEventListener('change', function(e) {
+        const inputEl = this;
+        const file = e.target.files[0];
+        if (!file || !currentBookingIdBalasan) return;
+
+        if (file.size > 3 * 1024 * 1024) {
+            alert('Ukuran surat balasan maksimal 3MB.');
+            inputEl.value = '';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = async function(ev) {
+            const hasil = await panggilAPI({
+                action: 'uploadBalasan',
+                id: currentBookingIdBalasan,
+                password: passwordBalasanSementara,
+                balasanBase64: ev.target.result
+            });
+
+            currentBookingIdBalasan = null;
+            passwordBalasanSementara = null;
+            inputEl.value = '';
+
+            if (hasil.success) muatSemuaBooking();
+            else alert(hasil.message || 'Gagal mengunggah surat balasan (password salah?).');
+        };
+        reader.readAsDataURL(file);
+    });
+
+    function kirimSuratBalasanWA(id) {
+        const b = daftarBookingTerakhir.find(x => x.id === id);
+        if (!b) return;
+        const pesan = `Yth. ${b.nama},\n\nTerima kasih, pembayaran booking Anda di ${lokasiTampilDari(b)} pada ${b.tanggal} jam ${b.mulai} - ${b.selesai} telah kami terima.\n\nSurat balasan resmi (sudah ditandatangani Kepala Dinas) dapat diunduh melalui link berikut:\n${b.suratBalasanUrl}\n\nTerima kasih.\n- Admin SI PINJOL`;
+        bukaWA(b.wa, pesan);
+    }
+
+    async function tandaiBalasanTerkirim(id) {
+        const password = mintaPasswordAdmin('Masukkan Password Admin untuk menandai surat balasan sudah dikirim ke WhatsApp:');
+        if (password === null) return;
+        const hasil = await panggilAPI({ action: 'tandaiTerkirim', id, password });
+        if (hasil.success) muatSemuaBooking();
+        else alert(hasil.message || 'Gagal.');
+    }
+
+    async function prosesPembatalan(id) {
+        const password = mintaPasswordAdmin("Masukkan Password Admin:");
+        if (password === null) return;
+        if (!confirm('Yakin ingin membatalkan booking ini? Data akan dihapus permanen.')) return;
+        const hasil = await panggilAPI({ action: 'batalkan', id, password });
+        if (hasil.success) muatSemuaBooking();
+        else alert(hasil.message || 'Gagal membatalkan.');
+    }
+
+    // Memindahkan (bukan menghapus) semua booking dengan tanggal SUDAH LEWAT ke
+    // sheet arsip terpisah ("Booking - Arsip"), supaya daftar aktif tidak penuh.
+    async function bersihkanRiwayat() {
+        if (!confirm('Pindahkan semua booking dengan tanggal SUDAH LEWAT ke arsip?\n\nData TIDAK akan hilang - hanya dipindah ke sheet "Booking - Arsip" di Google Sheet Anda, supaya tidak memenuhi daftar booking aktif. Booking hari ini & yang akan datang tidak akan tersentuh.')) return;
+        const password = mintaPasswordAdmin('Masukkan Password Admin untuk membersihkan riwayat:');
+        if (password === null) return;
+        const hasil = await panggilAPI({ action: 'bersihkanRiwayat', password });
+        if (hasil.success) {
+            alert(`Berhasil memindahkan ${hasil.jumlah} booking lama ke sheet arsip.`);
+            muatSemuaBooking();
+        } else {
+            alert(hasil.message || 'Gagal membersihkan riwayat.');
+        }
+    }
+
+    function renderTabel(data) {
+        tabelBody.innerHTML = '';
+        if (!data || data.length === 0) {
+            tabelBody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:#777;">Belum ada data booking.</td></tr>';
+            return;
+        }
+
+        data.forEach((b, index) => {
+            const row = document.createElement('tr');
+            const jenisTampil = jenisTampilDari(b);
+
+            let statusSuratTeks = 'Menunggu Diproses Admin';
+            let statusSuratClass = 'status-menunggu';
+            if (b.statusSurat === 'divalidasi') { statusSuratTeks = 'Disposisi Diteruskan - Silakan Bayar via WA'; statusSuratClass = 'status-lunas'; }
+
+            let statusBalasanTeks = '-';
+            if (b.statusBalasan === 'diunggah') statusBalasanTeks = 'Sudah Diunggah, Siap Dikirim';
+            else if (b.statusBalasan === 'terkirim') statusBalasanTeks = 'Sudah Dikirim ke WA';
+            else if (b.statusSurat === 'divalidasi' && b.statusBalasan === 'na') {
+                statusBalasanTeks = 'Menunggu Surat Balasan Diunggah';
+            }
+
+            let aksiHtml;
+            if (!modeAksiAdmin) {
+                // Penyewa (belum login admin): kolom Aksi terkunci, tidak ada tombol
+                // yang bisa mengubah data. Klik tombol ini langsung membuka login Admin.
+                aksiHtml = `<button type="button" class="btn-menu" onclick="masukSebagaiAdmin()">&#128274; Login Admin</button>`;
+            } else {
+                aksiHtml = `<button type="button" class="btn-lihat" onclick="lihatDokumen('${b.suratUrl}')">Lihat Surat</button>`;
+
+                if (b.statusSurat === 'menunggu') {
+                    aksiHtml += `<button type="button" class="btn-kirim-wa" onclick="kirimWAMenungguDisposisi('${b.id}')">Kirim WA: Menunggu Disposisi</button>`;
+                    aksiHtml += `<button type="button" class="btn-forward" onclick="validasiKepalaDinas('${b.id}')">Validasi &amp; Kirim Instruksi Pembayaran</button>`;
+                }
+                if (b.statusSurat === 'divalidasi' && b.statusBalasan === 'na') {
+                    aksiHtml += `<button type="button" class="btn-balasan" onclick="uploadSuratBalasan('${b.id}')">Upload Surat Balasan Akhir</button>`;
+                }
+                if (b.suratBalasanUrl) {
+                    aksiHtml += `<button type="button" class="btn-lihat" onclick="lihatDokumen('${b.suratBalasanUrl}')">Lihat Surat Balasan</button>`;
+                    aksiHtml += `<button type="button" class="btn-unduh" onclick="window.open('${b.suratBalasanUrl}','_blank')">Unduh Surat Balasan</button>`;
+                }
+                if (b.statusBalasan === 'diunggah') {
+                    aksiHtml += `<button type="button" class="btn-kirim-wa" onclick="kirimSuratBalasanWA('${b.id}')">Kirim ke WhatsApp</button>`;
+                    aksiHtml += `<button type="button" class="btn-confirm" onclick="tandaiBalasanTerkirim('${b.id}')">Tandai Sudah Dikirim</button>`;
+                }
+                aksiHtml += `<button type="button" class="btn-cancel" onclick="prosesPembatalan('${b.id}')">Batalkan</button>`;
+            }
+
+            row.innerHTML = `
+                <td>${index + 1}</td>
+                <td>${b.nama}</td>
+                <td>${b.alamat}</td>
+                <td>${b.wa}</td>
+                <td>${b.lokasi}</td>
+                <td>${jenisTampil}</td>
+                <td>${b.tanggal}</td>
+                <td>${b.mulai} - ${b.selesai}</td>
+                <td>${b.durasiString}</td>
+                <td>${formatRupiah(b.totalHarga)}</td>
+                <td class="status-surat-cell ${statusSuratClass}">${statusSuratTeks}</td>
+                <td class="status-balasan-cell">${statusBalasanTeks}</td>
+                <td class="aksi-cell">${aksiHtml}</td>
+            `;
+            tabelBody.appendChild(row);
+        });
+    }
+</script>
+
+</body>
+</html>
