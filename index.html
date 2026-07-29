@@ -132,6 +132,7 @@
         <h3>Daftar Booking</h3>
         <button type="button" class="btn-download" id="btnDownload" style="display:none;" onclick="exportKeExcel()">Download Data (XLS/CSV)</button>
         <button type="button" class="btn-cancel" id="btnBersihkan" style="display:none;" onclick="bersihkanRiwayat()">&#129529; Bersihkan Riwayat (Tanggal Lewat)</button>
+        <button type="button" class="btn-forward" id="btnAktifkanNotif" style="display:none;" onclick="mintaIzinNotifikasiDesktop()">&#128276; Aktifkan Notifikasi Desktop</button>
         <table>
             <thead>
                 <tr>
@@ -176,6 +177,12 @@
     let currentBookingIdBalasan = null;
     let passwordBalasanSementara = null;
 
+    // --- Notifikasi booking baru utk Admin ---
+    let idBookingDiketahui = new Set(); // dipakai utk deteksi ada booking baru yg masuk
+    let intervalPollingId = null;       // timer cek berkala selama dashboard Admin terbuka
+    let notifFlashIntervalId = null;    // timer kedip judul tab
+    const JUDUL_ASLI_TAB = document.title;
+
     // Navigasi dashboard awal: landing -> pilih Penyewa atau Admin
     function tampilkanLanding() {
         document.getElementById('landingBox').style.display = 'block';
@@ -183,6 +190,9 @@
         document.getElementById('daftarBookingBox').style.display = 'none';
         sesiAdminPassword = null; // "logout" - password sesi dilupakan saat kembali ke menu
         modeAksiAdmin = false;
+        hentikanPolling();
+        idBookingDiketahui = new Set(); // reset supaya tidak notif "booking lama" saat login lagi
+        hentikanKedipJudulTab();
     }
 
     function masukSebagaiPenyewa() {
@@ -191,7 +201,9 @@
         document.getElementById('daftarBookingBox').style.display = 'block';
         document.getElementById('btnDownload').style.display = 'none';
         document.getElementById('btnBersihkan').style.display = 'none';
+        document.getElementById('btnAktifkanNotif').style.display = 'none';
         modeAksiAdmin = false;
+        hentikanPolling();
         muatSemuaBooking();
     }
 
@@ -210,7 +222,10 @@
         document.getElementById('daftarBookingBox').style.display = 'block';
         document.getElementById('btnDownload').style.display = 'inline-block';
         document.getElementById('btnBersihkan').style.display = 'inline-block';
+        document.getElementById('btnAktifkanNotif').style.display = 'inline-block';
+        perbaruiTombolNotif();
         muatSemuaBooking();
+        mulaiPolling();
     }
 
     // Dipakai di semua aksi admin: pakai password sesi kalau sudah login,
@@ -228,20 +243,124 @@
         return res.json();
     }
 
-    async function muatSemuaBooking() {
+    async function muatSemuaBooking(background) {
         if (API_URL.includes('TEMPEL_URL_WEB_APP')) {
             tabelBody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:#c0392b;">&#9888; API_URL belum diisi. Buka file ini dengan editor teks, cari baris "const API_URL", lalu ganti dengan URL Web App Apps Script Anda.</td></tr>';
             return;
         }
-        tabelBody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:#777;">Memuat data...</td></tr>';
+        // `background=true` dipakai saat polling otomatis (tiap 30 detik) supaya
+        // tabel tidak "berkedip" ke tulisan "Memuat data..." tiap kali refresh diam-diam.
+        if (!background) {
+            tabelBody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:#777;">Memuat data...</td></tr>';
+        }
         try {
             const res = await fetch(API_URL);
             const data = await res.json();
+
+            // Deteksi booking baru (khusus mode Admin, dan bukan pemuatan pertama kali
+            // supaya tidak "notif" untuk booking-booking lama yang memang sudah ada).
+            if (modeAksiAdmin && idBookingDiketahui.size > 0) {
+                const bookingBaru = data.filter(b => b.statusSurat === 'menunggu' && !idBookingDiketahui.has(b.id));
+                if (bookingBaru.length > 0) notifikasiBookingBaru(bookingBaru);
+            }
+            idBookingDiketahui = new Set(data.map(b => b.id));
+
             daftarBookingTerakhir = data;
             renderTabel(data);
         } catch (err) {
-            tabelBody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:#c0392b;">Gagal memuat data. Cek koneksi internet, atau pastikan URL Web App masih aktif.</td></tr>';
+            if (!background) {
+                tabelBody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:#c0392b;">Gagal memuat data. Cek koneksi internet, atau pastikan URL Web App masih aktif.</td></tr>';
+            }
             console.error(err);
+        }
+    }
+
+    // --- Polling berkala selama dashboard Admin terbuka ---
+    function mulaiPolling() {
+        if (intervalPollingId) return; // sudah jalan
+        intervalPollingId = setInterval(() => {
+            if (modeAksiAdmin) muatSemuaBooking(true);
+        }, 30000); // cek tiap 30 detik
+    }
+    function hentikanPolling() {
+        if (intervalPollingId) {
+            clearInterval(intervalPollingId);
+            intervalPollingId = null;
+        }
+    }
+
+    // --- Notifikasi Desktop ---
+    function perbaruiTombolNotif() {
+        const btn = document.getElementById('btnAktifkanNotif');
+        if (!('Notification' in window)) {
+            btn.style.display = 'none';
+            return;
+        }
+        if (Notification.permission === 'granted') {
+            btn.textContent = '🔔 Notifikasi Desktop: Aktif';
+            btn.disabled = true;
+        } else {
+            btn.textContent = '🔔 Aktifkan Notifikasi Desktop';
+            btn.disabled = false;
+        }
+    }
+
+    function mintaIzinNotifikasiDesktop() {
+        if (!('Notification' in window)) {
+            alert('Browser ini tidak mendukung notifikasi desktop.');
+            return;
+        }
+        Notification.requestPermission().then(() => perbaruiTombolNotif());
+    }
+
+    function notifikasiBookingBaru(daftarBaru) {
+        // 1) Notifikasi desktop (kalau sudah diizinkan)
+        if ('Notification' in window && Notification.permission === 'granted') {
+            daftarBaru.forEach(function (b) {
+                const n = new Notification('📥 Booking Baru - SI PINJOL', {
+                    body: `${b.nama} - ${b.lokasi}\n${b.tanggal}, ${b.mulai}-${b.selesai}`,
+                    requireInteraction: true
+                });
+                n.onclick = function () { window.focus(); n.close(); };
+            });
+        }
+        // 2) Judul tab berkedip
+        mulaiKedipJudulTab(daftarBaru.length);
+        // 3) Bunyi bip singkat
+        mainkanBunyiNotifikasi();
+    }
+
+    function mulaiKedipJudulTab(jumlah) {
+        if (notifFlashIntervalId) return; // sudah berkedip
+        let tampilAsli = false;
+        notifFlashIntervalId = setInterval(function () {
+            document.title = tampilAsli ? JUDUL_ASLI_TAB : `🔴 ${jumlah} Booking Baru!`;
+            tampilAsli = !tampilAsli;
+        }, 1000);
+    }
+    function hentikanKedipJudulTab() {
+        if (notifFlashIntervalId) {
+            clearInterval(notifFlashIntervalId);
+            notifFlashIntervalId = null;
+        }
+        document.title = JUDUL_ASLI_TAB;
+    }
+    // Begitu tab ini difokus lagi oleh Admin, hentikan kedipan judul tab.
+    window.addEventListener('focus', hentikanKedipJudulTab);
+
+    function mainkanBunyiNotifikasi() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = 880;
+            gain.gain.setValueAtTime(0.15, ctx.currentTime);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.2);
+        } catch (err) {
+            // Diabaikan - bukan hal krusial kalau browser memblokir audio otomatis.
         }
     }
 
